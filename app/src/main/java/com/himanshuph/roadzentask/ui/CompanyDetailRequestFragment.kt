@@ -1,6 +1,7 @@
 package com.himanshuph.roadzentask.ui
 
 
+import android.graphics.Color
 import android.os.Bundle
 import android.support.design.widget.TextInputLayout
 import android.support.v4.app.Fragment
@@ -21,15 +22,19 @@ import com.himanshuph.roadzentask.utils.rx.AppSchedulerProvider
 import com.himanshuph.roadzentask.utils.visible
 import kotlinx.android.synthetic.main.fragment_company_detail_request.*
 import com.himanshuph.roadzentask.data.model.Question
+import com.himanshuph.roadzentask.utils.getString
 
 
 class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
 
     var mPresenter: CompanyContract.Presenter? = null
-    lateinit var button1: Button
-    lateinit var button2: Button
-    var mCompanyTILInfoList : ArrayList<TextInputInfo> = ArrayList()
-    var mRequesterTILInfoList : ArrayList<TextInputInfo> = ArrayList()
+    var companyFormHeader : String = ""
+    var requesterFormHeader : String = ""
+    lateinit var nextBtn: Button
+    lateinit var backBtn: Button
+    var headerTextView: TextView? = null
+    var mCompanyTILInfoList: ArrayList<TextInputInfo> = ArrayList()
+    var mRequesterTILInfoList: ArrayList<TextInputInfo> = ArrayList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,35 +52,139 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
         mPresenter?.getCompanyViewInfo()
     }
 
-    override fun showLoading() {
-        progressBar.visible()
+    override fun showRequesterFormView(requestDetails: RequestDetails) {
+        requesterFormHeader = requestDetails.header
+        updateHeaderTextView(requesterFormHeader)
+        mRequesterTILInfoList = ArrayList()
+        requestDetails.questions.forEach { question ->
+            addEditText(question, mRequesterTILInfoList)
+        }
+
+        addBackBtn()
+        backBtn.setOnClickListener(backBtnClickListener)
+        progressBar.gone()
         errorTv.gone()
+        nextBtn.gone()
+        updateVisibiltyForCompanyView(View.GONE)
     }
 
     override fun showCompanyFormView(requestDetails: RequestDetails) {
-        val textView = getHeaderTextView(requestDetails)
-        ll.addView(textView)
-        val questionList = requestDetails.questions
-        questionList.forEach { question ->
-            addEditText(question)
+        companyFormHeader = requestDetails.header
+        updateHeaderTextView(companyFormHeader)
+        mCompanyTILInfoList = ArrayList()
+        requestDetails.questions.forEach { question ->
+            addEditText(question, mCompanyTILInfoList)
         }
+        addNextBtn()
+        nextBtn.setOnClickListener(nextBtnClickListener)
         progressBar.gone()
         errorTv.gone()
-        button1 = Button(context)
-        button2 = Button(context)
-        button1.setOnClickListener {
+    }
 
+
+    val nextBtnClickListener: View.OnClickListener = object : View.OnClickListener {
+        override fun onClick(v: View?) {
+            var isValid = true
+            mCompanyTILInfoList.forEach { textInputInfo ->
+                val hint = textInputInfo.question.hint
+                val validaton = textInputInfo.question.validation
+                val til = view?.findViewById<TextInputLayout>(textInputInfo.viewId)
+                til?.let {
+                    val text = it.getString()
+                    if (text.isEmpty()) {
+                        it.isErrorEnabled = true
+                        it.error = "${hint} cannot be empty"
+                        isValid = false
+                    } else if (validaton != null && text.length != validaton.size) {
+                        it.isErrorEnabled = true
+                        it.error = "${hint} must be of length ${validaton.size}"
+                        isValid = false
+                    } else {
+                        it.error = null
+                        it.isErrorEnabled = false
+                    }
+                }
+            }
+
+            if (isValid) {
+                if (mRequesterTILInfoList.isEmpty())
+                    mPresenter?.getRequesterViewInfo()
+                else {
+                    updateHeaderTextView(requesterFormHeader)
+                    updateVisibiltyForRequesterView(View.VISIBLE)
+                    updateVisibiltyForCompanyView(View.GONE)
+                    nextBtn.gone()
+                    backBtn.visible()
+                }
+            }
         }
     }
 
 
-    private fun addEditText(question: Question) {
-        val editTextlp = getLayoutParams().apply { setMargins(50, 50, 50, 50) }
-        val tILP = getLayoutParams()
+    val backBtnClickListener: View.OnClickListener = object : View.OnClickListener {
+        override fun onClick(v: View?) {
+            var isValid = true
+            mRequesterTILInfoList.forEach { textInputInfo ->
+
+                val hint = textInputInfo.question.hint
+                val validaton = textInputInfo.question.validation
+                val til = if (textInputInfo.question.type.equals("image"))
+                    null
+                else
+                    view?.findViewById<TextInputLayout>(textInputInfo.viewId)
+                til?.let {
+                    val text = it.getString()
+                    if (text.isEmpty()) {
+                        it.isErrorEnabled = true
+                        it.error = "${hint} cannot be empty"
+                        isValid = false
+                    } else if (validaton != null && text.length != validaton.size) {
+                        it.isErrorEnabled = true
+                        it.error = "${hint} must be of length ${validaton.size}"
+                        isValid = false
+                    } else {
+                        it.error = null
+                        it.isErrorEnabled = false
+                    }
+                }
+            }
+
+            if (isValid) {
+                updateHeaderTextView(companyFormHeader)
+                updateVisibiltyForRequesterView(View.GONE)
+                updateVisibiltyForCompanyView(View.VISIBLE)
+                nextBtn.visible()
+                backBtn.gone()
+            }
+        }
+    }
+
+    private fun addNextBtn() {
+        nextBtn = Button(context)
+        nextBtn.text = "Next"
+        nextBtn.setBackgroundColor(Color.BLUE)
+        nextBtn.setTextColor(Color.WHITE)
+        nextBtn.layoutParams = getLayoutParams().apply { setMargins(50, 100, 50, 0) }
+        ll.addView(nextBtn)
+    }
+
+    private fun addBackBtn() {
+        backBtn = Button(context)
+        backBtn.text = "Back"
+        backBtn.setBackgroundColor(Color.BLUE)
+        backBtn.setTextColor(Color.WHITE)
+        backBtn.layoutParams = getLayoutParams().apply { setMargins(50, 100, 50, 0) }
+        ll.addView(backBtn)
+    }
+
+
+    private fun addEditText(question: Question, tilInfoList: ArrayList<TextInputInfo>) {
+        val editTextlp = getLayoutParams()
+        val tILP = getLayoutParams().apply { setMargins(50, 100, 50, 0) }
         val textInputLayout = TextInputLayout(context)
         textInputLayout.apply {
             id = View.generateViewId()
-            mCompanyTILInfoList.add(TextInputInfo(id,question.validation))
+            tilInfoList.add(TextInputInfo(id, question))
             hint = question.hint
             layoutParams = tILP
         }
@@ -94,21 +203,44 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
         ll.addView(textInputLayout, tILP)
     }
 
-    private fun getHeaderTextView(requestDetails: RequestDetails): TextView {
-        val textView = TextView(context);
-        val lp = getLayoutParams()
-        lp.setMargins(25, 25, 25, 25);
-        textView.apply {
-            text = requestDetails.header
-            id = View.generateViewId()
-            layoutParams = lp
-            gravity = Gravity.CENTER;
-            setTextSize(TypedValue.COMPLEX_UNIT_DIP, 25f);
+    private fun updateHeaderTextView(headerText: String) {
+        if (headerTextView != null) {
+            headerTextView!!.text = headerText
+        } else {
+            headerTextView = TextView(context);
+            val lp = getLayoutParams()
+            lp.setMargins(25, 25, 25, 25);
+            headerTextView?.apply {
+                text = headerText
+                id = View.generateViewId()
+                layoutParams = lp
+                gravity = Gravity.CENTER;
+                setTextSize(TypedValue.COMPLEX_UNIT_DIP, 25f);
+            }
+            ll.addView(headerTextView)
         }
-        return textView
+    }
+
+    fun updateVisibiltyForRequesterView(visibility: Int) {
+        mRequesterTILInfoList.forEach { textInputInfo ->
+            val til = view?.findViewById<TextInputLayout>(textInputInfo.viewId)
+            til?.visibility = visibility
+        }
+    }
+
+    fun updateVisibiltyForCompanyView(visibility: Int) {
+        mCompanyTILInfoList.forEach { textInputInfo ->
+            val til = view?.findViewById<TextInputLayout>(textInputInfo.viewId)
+            til?.visibility = visibility
+        }
     }
 
     private fun getLayoutParams() = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+
+    override fun showLoading() {
+        progressBar.visible()
+        errorTv.gone()
+    }
 
     override fun showError() {
         progressBar.gone()

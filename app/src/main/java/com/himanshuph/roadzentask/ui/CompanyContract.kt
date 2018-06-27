@@ -9,10 +9,12 @@ interface CompanyContract {
     interface View: BaseView {
         fun showLoading()
         fun showCompanyFormView(requestDetails: RequestDetails)
+        fun showRequesterFormView(requestDetails: RequestDetails)
         fun showError()
     }
 
     interface Presenter: BasePresenter<View> {
         fun getCompanyViewInfo()
+        fun getRequesterViewInfo()
     }
 }

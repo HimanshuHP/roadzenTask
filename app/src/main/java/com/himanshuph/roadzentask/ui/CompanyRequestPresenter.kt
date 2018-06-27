@@ -24,6 +24,18 @@ class CompanyRequestPresenter(val dataManager: DataManager,val schedulerProvider
                 })
     }
 
+    override fun getRequesterViewInfo() {
+        mView?.showLoading()
+        dataManager.loadRequesterDetails()
+                .subscribeOn(schedulerProvider.io())
+                .observeOn(schedulerProvider.ui())
+                .subscribe({ requestDetail ->
+                    mView?.showRequesterFormView(requestDetail)
+                },{
+                    mView?.showError()
+                })
+    }
+
     override fun detachView() {
         mCompositeDisposable.dispose()
         mView = null

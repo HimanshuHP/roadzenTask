@@ -18,5 +18,5 @@ fun View.gone() {
 }
 
 fun TextInputLayout.getString() : String {
-    return editText?.text?.toString() ?: run { "" }
+    return editText?.text?.toString()?.trim() ?: run { "" }
 }
