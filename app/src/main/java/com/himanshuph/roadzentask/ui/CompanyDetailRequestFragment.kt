@@ -2,6 +2,7 @@ package com.himanshuph.roadzentask.ui
 
 
 import android.graphics.Color
+import android.media.Image
 import android.os.Bundle
 import android.support.design.widget.TextInputLayout
 import android.support.v4.app.Fragment
@@ -23,6 +24,7 @@ import com.himanshuph.roadzentask.utils.visible
 import kotlinx.android.synthetic.main.fragment_company_detail_request.*
 import com.himanshuph.roadzentask.data.model.Question
 import com.himanshuph.roadzentask.utils.getString
+import org.w3c.dom.Text
 
 
 class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
@@ -223,14 +225,14 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
 
     fun updateVisibiltyForRequesterView(visibility: Int) {
         mRequesterTILInfoList.forEach { textInputInfo ->
-            val til = view?.findViewById<TextInputLayout>(textInputInfo.viewId)
+            val til = view?.findViewById<View>(textInputInfo.viewId)
             til?.visibility = visibility
         }
     }
 
     fun updateVisibiltyForCompanyView(visibility: Int) {
         mCompanyTILInfoList.forEach { textInputInfo ->
-            val til = view?.findViewById<TextInputLayout>(textInputInfo.viewId)
+            val til = view?.findViewById<View>(textInputInfo.viewId)
             til?.visibility = visibility
         }
     }
