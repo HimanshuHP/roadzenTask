@@ -2,20 +2,25 @@ package com.himanshuph.roadzentask.ui
 
 
 import android.graphics.Color
-import android.media.Image
 import android.os.Bundle
 import android.support.design.widget.TextInputLayout
 import android.support.v4.app.Fragment
 import android.text.InputType
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.GlideDrawable
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 import com.himanshuph.roadzentask.Injection
 
 import com.himanshuph.roadzentask.R
+import com.himanshuph.roadzentask.R.id.*
 import com.himanshuph.roadzentask.data.model.RequestDetails
 import com.himanshuph.roadzentask.utils.gone
 import com.himanshuph.roadzentask.utils.inflate
@@ -24,14 +29,13 @@ import com.himanshuph.roadzentask.utils.visible
 import kotlinx.android.synthetic.main.fragment_company_detail_request.*
 import com.himanshuph.roadzentask.data.model.Question
 import com.himanshuph.roadzentask.utils.getString
-import org.w3c.dom.Text
 
 
 class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
 
     var mPresenter: CompanyContract.Presenter? = null
-    var companyFormHeader : String = ""
-    var requesterFormHeader : String = ""
+    var companyFormHeader: String = ""
+    var requesterFormHeader: String = ""
     lateinit var nextBtn: Button
     lateinit var backBtn: Button
     var headerTextView: TextView? = null
@@ -59,7 +63,7 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
         updateHeaderTextView(requesterFormHeader)
         mRequesterTILInfoList = ArrayList()
         requestDetails.questions.forEach { question ->
-            addEditText(question, mRequesterTILInfoList)
+            addView(question, mRequesterTILInfoList)
         }
 
         addBackBtn()
@@ -75,7 +79,7 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
         updateHeaderTextView(companyFormHeader)
         mCompanyTILInfoList = ArrayList()
         requestDetails.questions.forEach { question ->
-            addEditText(question, mCompanyTILInfoList)
+            addView(question, mCompanyTILInfoList)
         }
         addNextBtn()
         nextBtn.setOnClickListener(nextBtnClickListener)
@@ -175,12 +179,40 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
         backBtn.text = "Back"
         backBtn.setBackgroundColor(Color.BLUE)
         backBtn.setTextColor(Color.WHITE)
-        backBtn.layoutParams = getLayoutParams().apply { setMargins(50, 100, 50, 0) }
+        backBtn.layoutParams = getLayoutParams().apply { setMargins(50, 100, 50, 50) }
         ll.addView(backBtn)
     }
 
 
-    private fun addEditText(question: Question, tilInfoList: ArrayList<TextInputInfo>) {
+    private fun addView(question: Question, tilInfoList: ArrayList<TextInputInfo>) {
+        when (question.type) {
+            "image" -> addImageView(question, tilInfoList)
+            "textNumeric" -> addEditText(question, tilInfoList, InputType.TYPE_CLASS_NUMBER)
+            else -> addEditText(question, tilInfoList, InputType.TYPE_CLASS_TEXT)
+        }
+    }
+
+    fun addImageView(question: Question, tilInfoList: ArrayList<TextInputInfo>) {
+        try {
+            val id = View.generateViewId()
+            val imageView = ImageView(context)
+            imageView.id = id
+            imageView.layoutParams = getLayoutParams(height = 400).apply { setMargins(20, 100, 20, 50) }
+            tilInfoList.add(TextInputInfo(id, question))
+            ll.addView(imageView)
+            Glide.with(context)
+                    .load(question.url)
+                    .fitCenter()
+                    .placeholder(R.mipmap.ic_launcher)
+                    .into(imageView)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+    }
+
+    fun addEditText(question: Question, tilInfoList: ArrayList<TextInputInfo>, inputType: Int) {
         val editTextlp = getLayoutParams()
         val tILP = getLayoutParams().apply { setMargins(50, 100, 50, 0) }
         val textInputLayout = TextInputLayout(context)
@@ -194,10 +226,7 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
         val editText = EditText(context)
         editText.apply {
             id = View.generateViewId()
-            when (question.type) {
-                "textNumeric" -> inputType = InputType.TYPE_CLASS_NUMBER
-                else -> inputType = InputType.TYPE_CLASS_TEXT
-            }
+            this.inputType = inputType
             layoutParams = editTextlp
         }
 
@@ -237,7 +266,7 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
         }
     }
 
-    private fun getLayoutParams() = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+    private fun getLayoutParams(width: Int = LinearLayout.LayoutParams.MATCH_PARENT, height: Int = LinearLayout.LayoutParams.WRAP_CONTENT) = LinearLayout.LayoutParams(width, height)
 
     override fun showLoading() {
         progressBar.visible()
