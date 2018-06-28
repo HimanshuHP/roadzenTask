@@ -14,7 +14,7 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null)
             supportFragmentManager
                     .beginTransaction()
-                    .add(R.id.content_frame, CompanyDetailRequestFragment.newInstance(), CompanyDetailRequestFragment.TAG)
+                    .add(R.id.content_frame, LocationFragment.newInstance(), CompanyDetailRequestFragment.TAG)
                     .commit()
     }
 
