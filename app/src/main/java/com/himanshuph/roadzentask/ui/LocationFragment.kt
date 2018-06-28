@@ -3,6 +3,7 @@ package com.himanshuph.roadzentask.ui
 import android.location.Address
 import android.location.Geocoder
 import android.os.Bundle
+import android.os.Handler
 import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentManager
 import android.util.Log
@@ -24,7 +25,9 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
         GoogleMap.OnMarkerDragListener {
 
     var needsInit: Boolean = false
-    var latestPosition : LatLng? = null
+    var latestPosition: LatLng? = null
+    var timer: Timer? = null
+    var count = -1;
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
 
@@ -42,22 +45,53 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
         mapFrag?.retainInstance = true
         mapFrag?.getMapAsync(this)
         decodeAddressBtn.setOnClickListener {
-            val geocoder = Geocoder(context.applicationContext, Locale.getDefault())
-
-
-            val addresses: List<Address>
-            try {
-                addresses = geocoder.getFromLocation(latestPosition?.latitude ?: 0.0, latestPosition?.longitude
-                        ?: 0.0, 1)
-                val address = addresses[0].getAddressLine(0)
-                val city = addresses[0].locality
-
-                Toast.makeText(context, "Address: " +
-                        address + " " + city, Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                e.printStackTrace();
-            }
+            proceedToShowAddress()
         }
+
+        autoDecodeAddressBtn.setOnClickListener {
+            scheduleDecoder()
+        }
+    }
+
+    private fun proceedToShowAddress() {
+        try {
+            val (address, city) = getAddress()
+            Toast.makeText(context, "Address: $address $city", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+    }
+
+    private fun getAddress(): Pair<String, String> {
+        val geocoder = Geocoder(context.applicationContext, Locale.getDefault())
+        val addresses: List<Address> = geocoder.getFromLocation(latestPosition?.latitude
+                ?: 0.0, latestPosition?.longitude
+                ?: 0.0, 1)
+        val address = addresses[0].getAddressLine(0)
+        val city = addresses[0].locality
+        return Pair(address, city)
+    }
+
+    fun scheduleDecoder() {
+        val handler = Handler();
+        timer = Timer();
+        val backtask = object : TimerTask() {
+            override fun run() {
+                handler.post {
+                    try {
+//                        Log.d("check", Thread.currentThread().toString());
+                        count++;
+                        proceedToShowAddress()
+                        if (count == 5) {
+                            timer?.cancel();
+                            timer = null;
+                        }
+                    } catch (e: Exception) {
+                    }
+                }
+            }
+        };
+        timer?.schedule(backtask, 0, 10000); //execute in every 20000 ms*/
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -74,17 +108,8 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
         googleMap.setOnMarkerDragListener(this)
     }
 
-    /*    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        if (context is OnFragmentInteractionListener) {
-            listener = context
-        } else {
-            throw RuntimeException(context.toString() + " must implement OnFragmentInteractionListener")
-        }
-    }*/
-
     override fun onInfoWindowClick(marker: Marker?) {
-        context.toast(marker?.title?:"", Toast.LENGTH_LONG)
+        context.toast(marker?.title ?: "", Toast.LENGTH_LONG)
     }
 
     override fun onMarkerDragEnd(marker: Marker?) {
@@ -113,8 +138,11 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
 
     }
 
-    override fun onDetach() {
-        super.onDetach()
+    override fun onDestroyView() {
+        super.onDestroyView()
+
+        timer?.cancel();
+        timer = null;
 
     }
 
