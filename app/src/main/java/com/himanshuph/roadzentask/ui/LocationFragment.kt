@@ -64,12 +64,14 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
 
     private fun getAddress(): Pair<String, String> {
         val geocoder = Geocoder(context.applicationContext, Locale.getDefault())
-        val addresses: List<Address> = geocoder.getFromLocation(latestPosition?.latitude
+        val addresses: List<Address>? = geocoder.getFromLocation(latestPosition?.latitude
                 ?: 0.0, latestPosition?.longitude
                 ?: 0.0, 1)
-        val address = addresses[0].getAddressLine(0)
-        val city = addresses[0].locality
-        return Pair(address, city)
+        return if (addresses != null && addresses.isNotEmpty()) {
+            val address = addresses[0].getAddressLine(0)
+            val city = addresses[0].locality
+            Pair(address, city)
+        } else Pair("", "")
     }
 
     fun scheduleDecoder() {
