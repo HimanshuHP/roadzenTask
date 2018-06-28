@@ -17,7 +17,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
-            android:text="Decode Address"
+            android:text="@string/decode_address"
             />
 
         <Button
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
-            android:text="Auto Decode Address"
+            android:text="@string/auto_decode_address"
             />
     </RelativeLayout>
 
