@@ -1,36 +1,44 @@
 package com.himanshuph.roadzentask.ui
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.location.Address
 import android.location.Geocoder
 import android.os.Bundle
-import android.os.Handler
+import android.os.IBinder
 import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import com.google.android.gms.maps.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.himanshuph.roadzentask.R
+import com.himanshuph.roadzentask.service.DecoderService
+import com.himanshuph.roadzentask.service.ServiceCallback
 import com.himanshuph.roadzentask.utils.inflate
 import com.himanshuph.roadzentask.utils.toast
 import kotlinx.android.synthetic.main.fragment_location.*
 import java.util.*
 
+
 class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowClickListener,
-        GoogleMap.OnMarkerDragListener {
+        GoogleMap.OnMarkerDragListener, ServiceCallback {
 
     var needsInit: Boolean = false
     var latestPosition: LatLng? = null
-    var timer: Timer? = null
-    var count = -1;
+    var decoderService:DecoderService?=null
+    var isBound: Boolean = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-
         return container?.inflate(R.layout.fragment_location)
     }
 
@@ -49,8 +57,41 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
         }
 
         autoDecodeAddressBtn.setOnClickListener {
-            scheduleDecoder()
+            disableBtn()
+            decoderService?.startTimerTask()
         }
+    }
+
+    override fun enableBtn() {
+        autoDecodeAddressBtn.isEnabled = true
+    }
+
+    fun disableBtn() {
+        autoDecodeAddressBtn.isEnabled = false
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val intent = Intent(context, DecoderService::class.java)
+        context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    val mConnection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            if(decoderService==null) {
+                decoderService = (service as DecoderService.LocalBinder).decoderService
+                decoderService?.setCallbacks(this@LocationFragment)
+            }
+            isBound = true
+        }
+
+        override fun onServiceDisconnected(className: ComponentName) {
+            isBound = false
+        }
+    }
+
+    override fun decodeAddress() {
+        proceedToShowAddress()
     }
 
     private fun proceedToShowAddress() {
@@ -72,28 +113,6 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
             val city = addresses[0].locality
             Pair(address, city)
         } else Pair("", "")
-    }
-
-    fun scheduleDecoder() {
-        val handler = Handler();
-        timer = Timer();
-        val backtask = object : TimerTask() {
-            override fun run() {
-                handler.post {
-                    try {
-//                        Log.d("check", Thread.currentThread().toString());
-                        count++;
-                        proceedToShowAddress()
-                        if (count == 5) {
-                            timer?.cancel();
-                            timer = null;
-                        }
-                    } catch (e: Exception) {
-                    }
-                }
-            }
-        };
-        timer?.schedule(backtask, 0, 10000); //execute in every 20000 ms*/
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -140,12 +159,17 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
 
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
+    fun stopService() {
+        if (isBound) {
+            decoderService?.setCallbacks(null) // unregister
+            context.unbindService(mConnection)
+            isBound = false;
+        }
+    }
 
-        timer?.cancel();
-        timer = null;
-
+    override fun onStop() {
+        super.onStop()
+        stopService()
     }
 
 
