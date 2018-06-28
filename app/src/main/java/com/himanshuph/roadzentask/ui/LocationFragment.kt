@@ -49,8 +49,17 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
         }
 
         autoDecodeAddressBtn.setOnClickListener {
+            disableBtn()
             scheduleDecoder()
         }
+    }
+
+    fun enableBtn() {
+        autoDecodeAddressBtn.isEnabled = true
+    }
+
+    fun disableBtn() {
+        autoDecodeAddressBtn.isEnabled = false
     }
 
     private fun proceedToShowAddress() {
@@ -86,13 +95,14 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
                         if (count == 5) {
                             timer?.cancel();
                             timer = null;
+                            enableBtn()
                         }
                     } catch (e: Exception) {
                     }
                 }
             }
         };
-        timer?.schedule(backtask, 0, 10000); //execute in every 20000 ms*/
+        timer?.schedule(backtask, 0, 60000)
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
