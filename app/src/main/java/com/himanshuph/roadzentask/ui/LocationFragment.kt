@@ -81,7 +81,6 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
             override fun run() {
                 handler.post {
                     try {
-//                        Log.d("check", Thread.currentThread().toString());
                         count++;
                         proceedToShowAddress()
                         if (count == 5) {
@@ -142,10 +141,8 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
 
     override fun onDestroyView() {
         super.onDestroyView()
-
-        timer?.cancel();
-        timer = null;
-
+        timer?.cancel()
+        timer = null
     }
 
 
