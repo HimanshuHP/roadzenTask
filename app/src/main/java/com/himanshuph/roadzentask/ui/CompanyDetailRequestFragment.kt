@@ -286,7 +286,7 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
 
     companion object {
         @JvmField
-        val TAG = "CompanyFragment"
+        val TAG = CompanyDetailRequestFragment::class.java.simpleName
 
         @JvmStatic
         fun newInstance(): CompanyDetailRequestFragment {

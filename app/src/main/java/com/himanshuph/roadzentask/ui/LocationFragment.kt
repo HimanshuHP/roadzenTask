@@ -4,6 +4,7 @@ import android.location.Address
 import android.location.Geocoder
 import android.os.Bundle
 import android.support.v4.app.Fragment
+import android.support.v4.app.FragmentManager
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -31,13 +32,14 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
 
     override fun onViewCreated(view: View?, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val mapFrag = fragmentManager.findFragmentById(R.id.map) as SupportMapFragment
+
+        val mapFrag = fragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
         if (savedInstanceState == null) {
             needsInit = true
         }
 
-        mapFrag.retainInstance = true
-        mapFrag.getMapAsync(this)
+        mapFrag?.retainInstance = true
+        mapFrag?.getMapAsync(this)
         decodeAddressBtn.setOnClickListener {
             val geocoder = Geocoder(context.applicationContext, Locale.getDefault())
 
@@ -61,7 +63,7 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
         if (needsInit) {
             latestPosition = LatLng(28.6441844, 77.1118256)
             val center = CameraUpdateFactory.newLatLng(LatLng(28.6441844, 77.1118256))
-            val zoom = CameraUpdateFactory.zoomTo(15f)
+            val zoom = CameraUpdateFactory.zoomTo(12f)
 
             googleMap.moveCamera(center)
             googleMap.animateCamera(zoom)
@@ -117,6 +119,10 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
 
 
     companion object {
+
+        @JvmField
+        val TAG = LocationFragment::class.java.simpleName
+
         @JvmStatic
         fun newInstance() = LocationFragment()
     }
