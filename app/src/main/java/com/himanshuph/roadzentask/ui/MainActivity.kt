@@ -1,14 +1,13 @@
 package com.himanshuph.roadzentask.ui
 
+import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentManager
-import android.view.View
 import com.himanshuph.roadzentask.R
 import com.roughike.bottombar.OnTabSelectListener
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.ArrayList
 
 class MainActivity : AppCompatActivity(),OnTabSelectListener {
 
@@ -28,12 +27,12 @@ class MainActivity : AppCompatActivity(),OnTabSelectListener {
     fun onFragmentChanged(fragmentManager: FragmentManager, tabId: Int) {
         try {
             val currentVisible = getVisibleFragment(fragmentManager)
-            val formView = getFragmentByTag(fragmentManager, CompanyDetailRequestFragment.TAG) as CompanyDetailRequestFragment?
+            val formView = getFragmentByTag(fragmentManager, FormFragment.TAG) as FormFragment?
             val locationView = getFragmentByTag(fragmentManager, LocationFragment.TAG) as LocationFragment?
             when (tabId) {
                 R.id.form_view -> {
                     if (formView == null)
-                        onAddAndHide(fragmentManager, CompanyDetailRequestFragment.newInstance(), currentVisible)
+                        onAddAndHide(fragmentManager, FormFragment.newInstance(), currentVisible)
                     else
                         onShowHideFragment(fragmentManager, formView, currentVisible)
 
@@ -87,6 +86,14 @@ class MainActivity : AppCompatActivity(),OnTabSelectListener {
                     .commit()
             toAdd.onHiddenChanged(false)
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     companion object {

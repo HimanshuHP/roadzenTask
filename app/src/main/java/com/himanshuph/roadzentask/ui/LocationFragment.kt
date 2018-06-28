@@ -16,6 +16,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.himanshuph.roadzentask.R
 import com.himanshuph.roadzentask.utils.inflate
+import com.himanshuph.roadzentask.utils.toast
 import kotlinx.android.synthetic.main.fragment_location.*
 import java.util.*
 
@@ -83,7 +84,7 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
     }*/
 
     override fun onInfoWindowClick(marker: Marker?) {
-        Toast.makeText(context, marker?.title, Toast.LENGTH_LONG).show()
+        context.toast(marker?.title?:"", Toast.LENGTH_LONG)
     }
 
     override fun onMarkerDragEnd(marker: Marker?) {

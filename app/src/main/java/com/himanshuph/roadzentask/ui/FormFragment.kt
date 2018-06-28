@@ -1,12 +1,18 @@
 package com.himanshuph.roadzentask.ui
 
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.support.design.widget.TextInputLayout
+import android.support.v4.app.ActivityCompat
 import android.support.v4.app.Fragment
+import android.support.v4.content.ContextCompat
 import android.text.InputType
-import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -14,37 +20,31 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.drawable.GlideDrawable
-import com.bumptech.glide.request.RequestListener
-import com.bumptech.glide.request.target.Target
 import com.himanshuph.roadzentask.Injection
-
 import com.himanshuph.roadzentask.R
-import com.himanshuph.roadzentask.R.id.*
-import com.himanshuph.roadzentask.data.model.RequestDetails
-import com.himanshuph.roadzentask.utils.gone
-import com.himanshuph.roadzentask.utils.inflate
-import com.himanshuph.roadzentask.utils.rx.AppSchedulerProvider
-import com.himanshuph.roadzentask.utils.visible
-import kotlinx.android.synthetic.main.fragment_company_detail_request.*
 import com.himanshuph.roadzentask.data.model.Question
-import com.himanshuph.roadzentask.utils.getString
+import com.himanshuph.roadzentask.data.model.RequestDetails
+import com.himanshuph.roadzentask.utils.*
+import com.himanshuph.roadzentask.utils.rx.AppSchedulerProvider
+import kotlinx.android.synthetic.main.fragment_company_detail_request.*
+import java.io.IOException
 
 
-class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
+class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
 
-    var mPresenter: CompanyContract.Presenter? = null
+    var mPresenter: FormContract.Presenter? = null
     var companyFormHeader: String = ""
     var requesterFormHeader: String = ""
     lateinit var nextBtn: Button
     lateinit var backBtn: Button
+    var imageView: ImageView? =null;
     var headerTextView: TextView? = null
     var mCompanyTILInfoList: ArrayList<TextInputInfo> = ArrayList()
     var mRequesterTILInfoList: ArrayList<TextInputInfo> = ArrayList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mPresenter = CompanyRequestPresenter(Injection.provideAppDataManager(), AppSchedulerProvider())
+        mPresenter = FormPresenter(Injection.provideAppDataManager(), AppSchedulerProvider())
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -195,9 +195,9 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
     fun addImageView(question: Question, tilInfoList: ArrayList<TextInputInfo>) {
         try {
             val id = View.generateViewId()
-            val imageView = ImageView(context)
-            imageView.id = id
-            imageView.layoutParams = getLayoutParams(height = 400).apply { setMargins(20, 100, 20, 50) }
+            imageView = ImageView(context)
+            imageView?.id = id
+            imageView?.layoutParams = getLayoutParams(height = 400).apply { setMargins(20, 100, 20, 50) }
             tilInfoList.add(TextInputInfo(id, question))
             ll.addView(imageView)
             Glide.with(context)
@@ -205,11 +205,72 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
                     .fitCenter()
                     .placeholder(R.mipmap.ic_launcher)
                     .into(imageView)
+            imageView?.setOnClickListener {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                        requestReadFilePermission()
+                    } else
+                        choosePhotoFromGallery()
+                } else
+                    choosePhotoFromGallery()
+            }
 
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
 
+    fun choosePhotoFromGallery() {
+        val galleryIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        startActivityForResult(galleryIntent, GALLERY_READ_REQUEST_CODE)
+    }
+
+    override fun onOkClick() {
+        requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), READ_FILE_REQUEST_CODE)
+    }
+
+    override fun onCancelClick() {
+        context.toast("Read Permission denied")
+    }
+
+    fun requestReadFilePermission() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_EXTERNAL_STORAGE))
+            showRationaleDialog(activity, getString(R.string.photo_permission_rationale), this)
+        else
+            requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), READ_FILE_REQUEST_CODE)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        when(requestCode) {
+            GALLERY_READ_REQUEST_CODE -> {
+                    if (data != null)
+                    {
+                        val contentURI = data.data
+                        try {
+                            val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, contentURI)
+                            imageView?.setImageBitmap(bitmap)
+                        } catch (e: IOException) {
+                            e.printStackTrace()
+                            context.toast("Failed!")
+                        }
+
+                    }
+            }
+            else -> super.onActivityResult(requestCode, resultCode, data)
+        }
+
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        when (requestCode) {
+            READ_FILE_REQUEST_CODE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                    choosePhotoFromGallery()
+                else
+                    context.toast("Read Permission denied")
+            }
+            else -> super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        }
     }
 
     fun addEditText(question: Question, tilInfoList: ArrayList<TextInputInfo>, inputType: Int) {
@@ -285,12 +346,17 @@ class CompanyDetailRequestFragment : Fragment(), CompanyContract.View {
 
 
     companion object {
+
+        val READ_FILE_REQUEST_CODE = 12344
+
+        val GALLERY_READ_REQUEST_CODE = 54663
+
         @JvmField
-        val TAG = CompanyDetailRequestFragment::class.java.simpleName
+        val TAG = FormFragment::class.java.simpleName
 
         @JvmStatic
-        fun newInstance(): CompanyDetailRequestFragment {
-            val fragment = CompanyDetailRequestFragment()
+        fun newInstance(): FormFragment {
+            val fragment = FormFragment()
             return fragment
         }
     }

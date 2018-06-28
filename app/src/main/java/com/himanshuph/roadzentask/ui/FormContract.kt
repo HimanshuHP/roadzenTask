@@ -4,7 +4,7 @@ import com.himanshuph.roadzentask.BasePresenter
 import com.himanshuph.roadzentask.BaseView
 import com.himanshuph.roadzentask.data.model.RequestDetails
 
-interface CompanyContract {
+interface FormContract {
 
     interface View: BaseView {
         fun showLoading()
