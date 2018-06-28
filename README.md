@@ -1,5 +1,5 @@
 # roadzenTask
-#Features : 
+# Features : 
 - Dynamic view through json
 - validation added for each view
 - input added for each view
