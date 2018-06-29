@@ -53,8 +53,8 @@ class FormPresenter(val dataManager: DataManager, val schedulerProvider: Schedul
                         return if (!addresses.isEmpty()) addresses[0] else throw Exception("Address Empty")
                     }
                 })
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(schedulerProvider.io())
+                .observeOn(schedulerProvider.ui())
                 .subscribe({ address ->
                     mView?.updateAddressView(address)
                 }
