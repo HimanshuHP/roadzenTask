@@ -6,4 +6,4 @@
 - Dragable Marker
 - Get address from Marker position
 - Auto Decoder for 5 min
-
+- Auto fill of Address and zipcode if current location available
