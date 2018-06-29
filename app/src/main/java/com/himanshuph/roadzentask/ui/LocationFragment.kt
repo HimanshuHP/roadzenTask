@@ -1,21 +1,22 @@
 package com.himanshuph.roadzentask.ui
 
-import android.location.Address
-import android.location.Geocoder
 import android.os.Bundle
 import android.os.Handler
 import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import com.google.android.gms.maps.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.himanshuph.roadzentask.R
+import com.himanshuph.roadzentask.utils.getAddress
 import com.himanshuph.roadzentask.utils.inflate
 import com.himanshuph.roadzentask.utils.toast
 import kotlinx.android.synthetic.main.fragment_location.*
@@ -64,24 +65,15 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
 
     private fun proceedToShowAddress() {
         try {
-            val (address, city) = getAddress()
-            Toast.makeText(context, "Address: $address $city", Toast.LENGTH_LONG).show()
+            val address = getAddress(context,latestPosition)
+            val addressLine = address?.getAddressLine(0)?:""
+            val city = address?.locality?:""
+            Toast.makeText(context, "Address: $addressLine $city", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             e.printStackTrace();
         }
     }
 
-    private fun getAddress(): Pair<String, String> {
-        val geocoder = Geocoder(context.applicationContext, Locale.getDefault())
-        val addresses: List<Address>? = geocoder.getFromLocation(latestPosition?.latitude
-                ?: 0.0, latestPosition?.longitude
-                ?: 0.0, 1)
-        return if (addresses != null && addresses.isNotEmpty()) {
-            val address = addresses[0].getAddressLine(0)
-            val city = addresses[0].locality
-            Pair(address, city)
-        } else Pair("", "")
-    }
 
     fun scheduleDecoder() {
         val handler = Handler();
@@ -124,7 +116,7 @@ class LocationFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnInfoWindowC
     }
 
     override fun onMarkerDragEnd(marker: Marker?) {
-        val position = marker?.getPosition()
+        val position = marker?.position
         latestPosition = position
         marker?.title = "${position?.latitude}, ${position?.longitude}"
         marker?.showInfoWindow()

@@ -3,10 +3,14 @@ package com.himanshuph.roadzentask.utils
 import android.app.Activity
 import android.content.Context
 import android.content.DialogInterface
+import android.location.Address
+import android.location.Geocoder
 import android.support.v7.app.AlertDialog
+import com.google.android.gms.maps.model.LatLng
 import com.himanshuph.roadzentask.R
 import java.io.IOException
 import java.nio.charset.Charset
+import java.util.*
 
 @Throws(IOException::class)
 fun loadJSONFromAsset(context: Context, jsonFileName: String): String {
@@ -34,4 +38,14 @@ fun showRationaleDialog(context: Context, msg: String, dialogCallbackInterface: 
             .setNegativeButton(context.getString(android.R.string.cancel)) { dialogInterface, i -> dialogCallbackInterface.onCancelClick() }
             .create()
             .show()
+}
+
+fun getAddress(context: Context, latestPosition: LatLng?): Address? {
+    val geocoder = Geocoder(context.applicationContext, Locale.getDefault())
+    val addresses: List<Address>? = geocoder.getFromLocation(latestPosition?.latitude
+            ?: 0.0, latestPosition?.longitude
+            ?: 0.0, 1)
+    return if (addresses != null && addresses.isNotEmpty()) {
+        addresses[0]
+    } else null
 }
