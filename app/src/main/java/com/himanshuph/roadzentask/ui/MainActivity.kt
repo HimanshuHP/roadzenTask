@@ -1,11 +1,13 @@
 package com.himanshuph.roadzentask.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentManager
 import com.himanshuph.roadzentask.R
+import com.himanshuph.roadzentask.ui.form.FormFragment
 import com.roughike.bottombar.OnTabSelectListener
 import kotlinx.android.synthetic.main.activity_main.*
 
@@ -89,7 +91,18 @@ class MainActivity : AppCompatActivity(),OnTabSelectListener {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            FormFragment.REQUEST_CHECK_SETTINGS -> {
+                when (resultCode) {
+                    Activity.RESULT_OK -> {
+                        val formView = getFragmentByTag(supportFragmentManager, FormFragment.TAG) as FormFragment?
+                        formView?.onActivityResult(requestCode, resultCode, data)
+
+                    }
+                }
+            }
+            else -> super.onActivityResult(requestCode, resultCode, data)
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

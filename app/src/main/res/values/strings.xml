@@ -5,6 +5,7 @@
     <string name="form">Form</string>
     <string name="map">Map</string>
     <string name="photo_permission_rationale">Enable Photo Read permission to upload</string>
+    <string name="location_permission_rationale">Enable location permission to autofill address and zipcode</string>
     <string name="error">Some Error occurred</string>
     <string name="decode_address">Decode Address</string>
     <string name="auto_decode_address">Auto Decode</string>

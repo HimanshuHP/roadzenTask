@@ -27,15 +27,15 @@ fun loadJSONFromAsset(context: Context, jsonFileName: String): String {
 }
 
 interface DialogCallbackInterface {
-    fun onOkClick()
-    fun onCancelClick()
+    fun onOkClick(permission: String)
+    fun onCancelClick(permission: String)
 }
 
-fun showRationaleDialog(context: Context, msg: String, dialogCallbackInterface: DialogCallbackInterface) {
+fun showRationaleDialog(context: Context, msg: String,permission: String, dialogCallbackInterface: DialogCallbackInterface) {
     AlertDialog.Builder(context, R.style.AlertDialogCustom)
             .setMessage(msg)
-            .setPositiveButton(context.getString(android.R.string.ok)) { dialogInterface, i -> dialogCallbackInterface.onOkClick() }
-            .setNegativeButton(context.getString(android.R.string.cancel)) { dialogInterface, i -> dialogCallbackInterface.onCancelClick() }
+            .setPositiveButton(context.getString(android.R.string.ok)) { dialogInterface, i -> dialogCallbackInterface.onOkClick(permission) }
+            .setNegativeButton(context.getString(android.R.string.cancel)) { dialogInterface, i -> dialogCallbackInterface.onCancelClick(permission) }
             .create()
             .show()
 }

@@ -1,18 +1,22 @@
-package com.himanshuph.roadzentask.ui
+package com.himanshuph.roadzentask.ui.form
 
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.location.Address
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.design.widget.TextInputLayout
-import android.support.v4.app.ActivityCompat
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
 import android.text.InputType
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -20,13 +24,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import com.bumptech.glide.Glide
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.*
 import com.himanshuph.roadzentask.Injection
 import com.himanshuph.roadzentask.R
 import com.himanshuph.roadzentask.data.model.Question
 import com.himanshuph.roadzentask.data.model.RequestDetails
+import com.himanshuph.roadzentask.ui.TextInputInfo
 import com.himanshuph.roadzentask.utils.*
 import com.himanshuph.roadzentask.utils.rx.AppSchedulerProvider
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.functions.Function
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.fragment_company_detail_request.*
+import pl.charmas.android.reactivelocation2.ReactiveLocationProvider
+import pl.charmas.android.reactivelocation2.ReactiveLocationProviderConfiguration
 import java.io.IOException
 
 
@@ -37,14 +50,27 @@ class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
     var requesterFormHeader: String = ""
     lateinit var nextBtn: Button
     lateinit var backBtn: Button
-    var imageView: ImageView? =null;
+    var imageView: ImageView? = null;
     var headerTextView: TextView? = null
     var mCompanyTILInfoList: ArrayList<TextInputInfo> = ArrayList()
     var mRequesterTILInfoList: ArrayList<TextInputInfo> = ArrayList()
+    var locationRequest: LocationRequest? = null
+    var locationSettingRequest: LocationSettingsRequest? = null
+    var mSettingClient: SettingsClient? = null
+
+    var addressViewId : Int = 0;
+    var zipcodeViewId : Int = 0;
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mPresenter = FormPresenter(Injection.provideAppDataManager(), AppSchedulerProvider())
+        init()
+    }
+
+    private fun init() {
+        mSettingClient = LocationServices.getSettingsClient(activity)
+
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -85,43 +111,117 @@ class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
         nextBtn.setOnClickListener(nextBtnClickListener)
         progressBar.gone()
         errorTv.gone()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                requestLocationPermission(LOCATION_PERMISSION_REQUEST_CODE, this@FormFragment)
+            } else
+                proceedToCheckLocationSettings()
+        } else
+            proceedToCheckLocationSettings()
+    }
+
+    fun proceedToCheckLocationSettings() {
+        locationRequest = LocationRequest.create()
+                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                .setNumUpdates(5)
+                .setInterval(100)
+        if (context.isLocationEnabled())
+            fetchUserLocation()
+        else
+            turnOnLocation()
     }
 
 
-    val nextBtnClickListener: View.OnClickListener = object : View.OnClickListener {
-        override fun onClick(v: View?) {
-            var isValid = true
-            mCompanyTILInfoList.forEach { textInputInfo ->
-                val hint = textInputInfo.question.hint
-                val validaton = textInputInfo.question.validation
-                val til = view?.findViewById<TextInputLayout>(textInputInfo.viewId)
-                til?.let {
-                    val text = it.getString()
-                    if (text.isEmpty()) {
-                        it.isErrorEnabled = true
-                        it.error = "${hint} cannot be empty"
-                        isValid = false
-                    } else if (validaton != null && text.length != validaton.size) {
-                        it.isErrorEnabled = true
-                        it.error = "${hint} must be of length ${validaton.size}"
-                        isValid = false
-                    } else {
-                        it.error = null
-                        it.isErrorEnabled = false
+    @SuppressLint("MissingPermission")
+    fun fetchUserLocation() {
+        val locationProvider: ReactiveLocationProvider = ReactiveLocationProvider(context.applicationContext, ReactiveLocationProviderConfiguration
+                .builder()
+                .setRetryOnConnectionSuspended(true)
+                .build())
+
+        mPresenter?.observerAddressChanges(locationProvider,locationRequest)
+    }
+
+    override fun updateAddressView(address: Address) {
+        val addressLine = address.getAddressLine(0)
+        val postalCode = address.postalCode
+        Log.e(FormFragment.TAG,addressLine)
+        Log.e(FormFragment.TAG,postalCode)
+        view?.findViewById<EditText>(addressViewId)?.setText(addressLine)
+        view?.findViewById<EditText>(zipcodeViewId)?.setText(postalCode)
+    }
+
+    fun turnOnLocation() {
+        val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest!!).setAlwaysShow(true)
+        locationSettingRequest = builder.build()
+        val task = mSettingClient?.checkLocationSettings(locationSettingRequest)
+        task?.addOnCompleteListener { taskRespone ->
+            try {
+                val response = taskRespone.getResult(ApiException::class.java);
+                // All location settings are satisfied. The client can initialize location
+                // requests here.
+
+                fetchUserLocation()
+
+
+            } catch (exception: ApiException) {
+                when (exception.getStatusCode()) {
+                    LocationSettingsStatusCodes.RESOLUTION_REQUIRED -> {
+                        try {
+                            // Cast to a resolvable exception.
+                            val resolvable: ResolvableApiException = exception as ResolvableApiException
+                            // Show the dialog by calling startResolutionForResult(),
+                            // and check the result in onActivityResult().
+                            resolvable.startResolutionForResult(activity, REQUEST_CHECK_SETTINGS)
+                        } catch (e: IntentSender.SendIntentException) {
+                            // Ignore the error.
+                        } catch (e: ClassCastException) {
+                            // Ignore, should be an impossible error.
+                        }
                     }
+
+                    LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE -> {
+
+                    }
+
                 }
             }
+        }
+    }
 
-            if (isValid) {
-                if (mRequesterTILInfoList.isEmpty())
-                    mPresenter?.getRequesterViewInfo()
-                else {
-                    updateHeaderTextView(requesterFormHeader)
-                    updateVisibiltyForRequesterView(View.VISIBLE)
-                    updateVisibiltyForCompanyView(View.GONE)
-                    nextBtn.gone()
-                    backBtn.visible()
+
+    val nextBtnClickListener: View.OnClickListener = View.OnClickListener {
+        var isValid = true
+        mCompanyTILInfoList.forEach { textInputInfo ->
+            val hint = textInputInfo.question.hint
+            val validaton = textInputInfo.question.validation
+            val til = view?.findViewById<TextInputLayout>(textInputInfo.viewId)
+            til?.let {
+                val text = it.getString()
+                if (text.isEmpty()) {
+                    it.isErrorEnabled = true
+                    it.error = "${hint} cannot be empty"
+                    isValid = false
+                } else if (validaton != null && text.length != validaton.size) {
+                    it.isErrorEnabled = true
+                    it.error = "${hint} must be of length ${validaton.size}"
+                    isValid = false
+                } else {
+                    it.error = null
+                    it.isErrorEnabled = false
                 }
+            }
+        }
+
+        if (isValid) {
+            if (mRequesterTILInfoList.isEmpty())
+                mPresenter?.getRequesterViewInfo()
+            else {
+                updateHeaderTextView(requesterFormHeader)
+                updateVisibiltyForRequesterView(View.VISIBLE)
+                updateVisibiltyForCompanyView(View.GONE)
+                nextBtn.gone()
+                backBtn.visible()
             }
         }
     }
@@ -208,7 +308,7 @@ class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
             imageView?.setOnClickListener {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                        requestReadFilePermission()
+                        requestReadFilePermission(READ_FILE_PERMISSION_REQUEST_CODE, this@FormFragment)
                     } else
                         choosePhotoFromGallery()
                 } else
@@ -225,36 +325,43 @@ class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
         startActivityForResult(galleryIntent, GALLERY_READ_REQUEST_CODE)
     }
 
-    override fun onOkClick() {
-        requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), READ_FILE_REQUEST_CODE)
+    override fun onOkClick(permission: String) {
+        when (permission) {
+            Manifest.permission.READ_EXTERNAL_STORAGE -> requestPermissions(arrayOf(permission), READ_FILE_PERMISSION_REQUEST_CODE)
+            Manifest.permission.ACCESS_FINE_LOCATION -> requestPermissions(arrayOf(permission), LOCATION_PERMISSION_REQUEST_CODE)
+        }
+
     }
 
-    override fun onCancelClick() {
-        context.toast("Read Permission denied")
-    }
+    override fun onCancelClick(permission: String) {
+        when (permission) {
+            Manifest.permission.READ_EXTERNAL_STORAGE -> context.toast("Read Permission denied")
+            Manifest.permission.ACCESS_FINE_LOCATION -> context.toast("Location Permission denied")
+        }
 
-    fun requestReadFilePermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_EXTERNAL_STORAGE))
-            showRationaleDialog(activity, getString(R.string.photo_permission_rationale), this)
-        else
-            requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), READ_FILE_REQUEST_CODE)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        when(requestCode) {
+        when (requestCode) {
             GALLERY_READ_REQUEST_CODE -> {
-                    if (data != null)
-                    {
-                        val contentURI = data.data
-                        try {
-                            val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, contentURI)
-                            imageView?.setImageBitmap(bitmap)
-                        } catch (e: IOException) {
-                            e.printStackTrace()
-                            context.toast("Failed!")
-                        }
-
+                if (data != null) {
+                    val contentURI = data.data
+                    try {
+                        val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, contentURI)
+                        imageView?.setImageBitmap(bitmap)
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                        context.toast("Failed!")
                     }
+
+                }
+            }
+            REQUEST_CHECK_SETTINGS -> {
+                when (resultCode) {
+                    Activity.RESULT_OK -> {
+                     fetchUserLocation()
+                    }
+                }
             }
             else -> super.onActivityResult(requestCode, resultCode, data)
         }
@@ -263,11 +370,18 @@ class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         when (requestCode) {
-            READ_FILE_REQUEST_CODE -> {
+            READ_FILE_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
                     choosePhotoFromGallery()
                 else
                     context.toast("Read Permission denied")
+            }
+
+            LOCATION_PERMISSION_REQUEST_CODE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                    proceedToCheckLocationSettings()
+                else
+                    context.toast("Location Permission denied")
             }
             else -> super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
@@ -275,20 +389,27 @@ class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
 
     fun addEditText(question: Question, tilInfoList: ArrayList<TextInputInfo>, inputType: Int) {
         val editTextlp = getLayoutParams()
+
         val tILP = getLayoutParams().apply { setMargins(50, 100, 50, 0) }
         val textInputLayout = TextInputLayout(context)
         textInputLayout.apply {
-            id = View.generateViewId()
+            this.id = View.generateViewId()
             tilInfoList.add(TextInputInfo(id, question))
             hint = question.hint
             layoutParams = tILP
         }
 
         val editText = EditText(context)
+        val id = View.generateViewId()
         editText.apply {
-            id = View.generateViewId()
+            this.id = id
             this.inputType = inputType
             layoutParams = editTextlp
+        }
+
+        when(question.hint) {
+            "Customer Address" -> addressViewId = id
+            "ZipCode" -> zipcodeViewId = id
         }
 
         textInputLayout.addView(editText, editTextlp)
@@ -347,7 +468,11 @@ class FormFragment : Fragment(), FormContract.View, DialogCallbackInterface {
 
     companion object {
 
-        val READ_FILE_REQUEST_CODE = 12344
+        val REQUEST_CHECK_SETTINGS = 0x1
+
+        val LOCATION_PERMISSION_REQUEST_CODE = 54288
+
+        val READ_FILE_PERMISSION_REQUEST_CODE = 12344
 
         val GALLERY_READ_REQUEST_CODE = 54663
 
